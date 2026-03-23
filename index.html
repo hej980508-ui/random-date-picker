@@ -406,6 +406,23 @@ function renderAdminList() {
     <div id="adminList"></div>
   </div>
 </div>
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBdgut-YB8rZPGLmie52FPjHQ3fjD-1Yf4",
+  authDomain: "random-date-picker-5ca0c.firebaseapp.com",
+  databaseURL: "https://random-date-picker-5ca0c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "random-date-picker-5ca0c",
+  storageBucket: "random-date-picker-5ca0c.firebasestorage.app",
+  messagingSenderId: "783079414181",
+  appId: "1:783079414181:web:84716028e0a8faffc3304c"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 </body>
 </html>
