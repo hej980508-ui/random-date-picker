@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>데이트 랜덤 뽑기</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: #f9fafb;
+  max-width: 700px;
+  margin: auto;
+  padding: 20px;
+}
+
+h2 { text-align: center; }
+
+input, textarea, select {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Arial', sans-serif;
+}
+
+textarea { height: 130px; }
+
+button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #4338ca; }
+
+.card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.hidden { display: none; }
+
+.list-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.small-btn {
+  width: auto;
+  padding: 6px 12px;
+  margin-right: 5px;
+  font-size: 12px;
+  background: #e5e7eb;
+  color: black;
+  border-radius: 6px;
+}
+
+.used {
+  color: gray;
+  text-decoration: line-through;
+}
+
+.pop { animation: pop 0.4s ease; }
+
+@keyframes pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  opacity: 0;
+  transition: 0.3s;
+  z-index: 999;
+}
+
+.toast.show { opacity: 1; }
+
+select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.author-name {
+  font-size: 0.8em;     
+  color: #888888;      
+  margin-left: 8px;     
+}
+#backBtn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#backBtn:hover {
+  background: #4b5563;
+}
+</style>
+</head>
+
+<body>
+
+<h2 style="cursor:pointer;" onclick="goHome()">🎁 랜덤 데이트</h2>
+<div class="card">
+  <button onclick="pickRandom()">🎲 돌리기</button>
+  <div id="result" class="hidden">
+    <h4 id="resultTitle"></h4>
+    <p id="resultPlace"></p>
+    <p id="resultDetail" style="white-space:pre-wrap;"></p>
+    <button onclick="markUsed()">사용 완료</button>
+  </div>
+</div>
+
+<div class="card" id="loginCard">
+  <h3>🔐 로그인</h3>
+  <select id="loginName">
+    <option value="">--사용자 선택--</option>
+    <option value="천재은지">천재은지</option>
+    <option value="바보재연">바보재연</option>
+  </select>
+  <input id="loginPass" type="password" placeholder="비밀번호">
+  <button onclick="login()">로그인</button>
+</div>
+
+<div class="card hidden" id="addCard">
+  <h3>➕ 코스 추가</h3>
+  <input id="author" placeholder="작성자" readonly>
+  <input id="password" type="password" placeholder="비밀번호" readonly>
+  <input id="title" placeholder="제목">
+  <input id="place" placeholder="장소">
+  <textarea id="detail" placeholder="세부 계획"></textarea>
+  <button onclick="addCourse()">저장</button>
+<button id="backBtn" onclick="goHome()" style="margin-top:10px; background:#6b7280;">🏠 메인 화면으로 돌아가기</button>
+</div>
+
+<div class="card hidden" id="myCard">
+  <h3>📋 내 코스</h3>
+  <div id="myList"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let courses = JSON.parse(localStorage.getItem("courses")) || [];
+let currentUser = null;
+let currentIndex = null;
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1500);
+}
+
+function save() {
+  localStorage.setItem("courses", JSON.stringify(courses));
+}
+
+function addCourse() {
+  if (!title.value) {
+    alert("제목 필수!");
+    return;
+  }
+
+  courses.push({
+    author: currentUser.name,
+    password: currentUser.pass,
+    title: title.value,
+    place: place.value,
+    detail: detail.value,
+    used: false
+  });
+
+  save();
+  showToast("저장 완료! 🎉");
+  renderMyList();
+
+  title.value = '';
+  place.value = '';
+  detail.value = '';
+}
+
+const users = {
+  "천재은지": "0508",
+  "바보재연": "1010"
+};
+
+function login() {
+  const name = loginName.value;
+  const pass = loginPass.value;
+
+  if (!name) {
+    alert("사용자를 선택하세요!");
+    return;
+  }
+
+  if (!users[name] || pass !== users[name]) {
+    alert("비밀번호가 틀렸습니다!");
+    return;
+  }
+
+  currentUser = { name: name, pass: users[name] };
+  author.value = currentUser.name;
+  password.value = currentUser.pass;
+
+  document.getElementById('loginCard').classList.add('hidden');
+  document.getElementById('addCard').classList.remove('hidden');
+  document.getElementById('myCard').classList.remove('hidden');
+
+  renderMyList();
+  showToast("로그인 완료! 👍");
+}
+
+function renderMyList() {
+  myList.innerHTML = "";
+  const filtered = courses.filter(c =>
+    c.author === currentUser.name && c.password === currentUser.pass
+  );
+  filtered.forEach((c) => {
+    const index = courses.indexOf(c);
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <span class="${c.used ? 'used' : ''}">
+        ${c.title} (${c.place})
+      </span><br>
+      <div id="view-${index}">
+        <button class="small-btn" onclick="showEdit(${index})">수정</button>
+        <button class="small-btn" onclick="deleteCourse(${index})">삭제</button>
+        ${
+          c.used
+            ? `<button class="small-btn" onclick="restoreOne(${index})">되살리기</button>`
+            : `<button class="small-btn" onclick="markUsedDirect(${index})">사용완료</button>`
+        }
+      </div>
+      <div id="edit-${index}" style="display:none;">
+        <input id="edit-title-${index}" value="${c.title}">
+        <input id="edit-place-${index}" value="${c.place}">
+        <textarea id="edit-detail-${index}">${c.detail}</textarea>
+        <button class="small-btn" onclick="saveEdit(${index})">저장</button>
+        <button class="small-btn" onclick="cancelEdit(${index})">취소</button>
+      </div>
+    `;
+    myList.appendChild(div);
+  });
+}
+
+function deleteCourse(index) {
+  if(confirm("삭제할까요?")) {
+    courses.splice(index,1);
+    save();
+    renderMyList();
+    renderAdminList();
+    showToast("삭제 완료 🗑️");
+  }
+}
+
+function pickRandom() {
+  const available = courses.filter(c => !c.used);
+  if(available.length === 0) return alert("남은 코스 없음!");
+  const random = Math.floor(Math.random() * available.length);
+  const picked = available[random];
+  currentIndex = courses.indexOf(picked);
+  resultTitle.innerHTML = `
+  ${picked.title} <span class="author-name">${picked.author}</span>
+`;
+  resultPlace.innerText = "📍 " + picked.place;
+  resultDetail.innerText = picked.detail;
+  result.classList.remove("hidden");
+  result.classList.add("pop");
+  setTimeout(() => result.classList.remove("pop"), 400);
+}
+
+function markUsed() {
+  if(currentIndex === null) return;
+  courses[currentIndex].used = true;
+  save();
+  showToast("사용 완료! ✔");
+  renderMyList();
+  renderAdminList();
+}
+function goHome() {
+  document.getElementById('addCard').classList.add('hidden');
+  document.getElementById('myCard').classList.add('hidden');
+  document.getElementById('loginCard').classList.remove('hidden');
+  currentUser = null;
+  currentIndex = null;
+  showToast("메인 화면으로 돌아왔습니다 🏠");
+}
+
+function goHome() {
+  document.getElementById('addCard').classList.add('hidden');
+  document.getElementById('myCard').classList.add('hidden');
+  document.getElementById('loginCard').classList.remove('hidden');
+  currentUser = null;
+  currentIndex = null;
+
+  showToast("메인 화면으로 돌아왔습니다 🏠");
+}
+
+function markUsedDirect(index) {
+  courses[index].used = true;
+  save();
+  showToast("사용 완료! ✔");
+  renderMyList();
+  renderAdminList();
+}
+
+function restoreOne(index) {
+  courses[index].used = false;
+  save();
+  showToast("다시 사용 가능! 🔄");
+  renderMyList();
+  renderAdminList();
+}
+
+function showEdit(index) {
+  document.getElementById(`view-${index}`).style.display = "none";
+  document.getElementById(`edit-${index}`).style.display = "block";
+}
+
+function cancelEdit(index) {
+  document.getElementById(`view-${index}`).style.display = "block";
+  document.getElementById(`edit-${index}`).style.display = "none";
+}
+
+function saveEdit(index) {
+  courses[index].title = document.getElementById(`edit-title-${index}`).value;
+  courses[index].place = document.getElementById(`edit-place-${index}`).value;
+  courses[index].detail = document.getElementById(`edit-detail-${index}`).value;
+  save();
+  renderMyList();
+  showToast("수정 완료! ✏️");
+}
+
+/* 관리자 모드 */
+let isAdmin = false;
+
+function adminLogin() {
+  if(adminPass.value === "0319") {
+    isAdmin = true;
+    adminPanel.classList.remove("hidden");
+    renderAdminList();
+    showToast("관리자 로그인 성공 🔧");
+  } else {
+    alert("비밀번호 틀림");
+  }
+}
+
+function renderAdminList() {
+  adminList.innerHTML = "";
+  courses.forEach((c,index)=>{
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <div style="padding:10px; border-radius:10px; background:#f3f4f6;">
+        <span class="${c.used ? 'used' : ''}">
+          ${c.title} (${c.place}) · 👤 ${c.author}
+        </span><br>
+        <div style="margin-top:8px;">
+          ${c.used? `<button class="small-btn" onclick="restoreOne(${index})">되살리기</button>`:
+                    `<button class="small-btn" onclick="markUsedDirect(${index})">사용완료</button>`}
+          <button class="small-btn" onclick="deleteCourse(${index})">삭제</button>
+        </div>
+      </div>
+    `;
+    adminList.appendChild(div);
+  });
+}
+</script>
+
+<div class="card" style="opacity:0.7; font-size:13px;">
+  <h4>🛠 관리자 모드</h4>
+  <input id="adminPass" type="password" placeholder="관리자 비밀번호">
+  <button onclick="adminLogin()">관리자 로그인</button>
+
+  <div id="adminPanel" class="hidden">
+    <div id="adminList"></div>
+  </div>
+</div>
+
+</body>
+</html>
